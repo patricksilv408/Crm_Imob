@@ -13,18 +13,27 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createAgency } from "../actions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { createUserInAgency } from "../actions";
 import { toast } from "sonner";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
-export function CreateAgencyDialog() {
+export function CreateUserDialog() {
   const formRef = useRef<HTMLFormElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [role, setRole] = useState("Corretor");
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const result = await createAgency(formData);
+    formData.set('role', role);
+    const result = await createUserInAgency(formData);
 
     if (result.error) {
       toast.error(result.error);
@@ -38,33 +47,41 @@ export function CreateAgencyDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button>Adicionar Imobiliária</Button>
+        <Button>Adicionar Usuário</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Adicionar Nova Imobiliária</DialogTitle>
+          <DialogTitle>Adicionar Novo Usuário</DialogTitle>
           <DialogDescription>
-            Preencha os dados da imobiliária e do seu administrador.
+            Preencha os dados do novo usuário.
           </DialogDescription>
         </DialogHeader>
         <form ref={formRef} onSubmit={handleSubmit} className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              Nome
+            <Label htmlFor="email" className="text-right">
+              Email
             </Label>
-            <Input id="name" name="name" className="col-span-3" required />
+            <Input id="email" name="email" type="email" className="col-span-3" required />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="admin_email" className="text-right">
-              Email Admin
+            <Label htmlFor="password" className="text-right">
+              Senha
             </Label>
-            <Input id="admin_email" name="admin_email" type="email" className="col-span-3" required />
+            <Input id="password" name="password" type="password" className="col-span-3" required />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="admin_password" className="text-right">
-              Senha Admin
+            <Label htmlFor="role" className="text-right">
+              Função
             </Label>
-            <Input id="admin_password" name="admin_password" type="password" className="col-span-3" required />
+            <Select name="role" value={role} onValueChange={setRole}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Corretor">Corretor</SelectItem>
+                <SelectItem value="AdminImobiliaria">Admin Imobiliária</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <DialogFooter>
             <DialogClose asChild>

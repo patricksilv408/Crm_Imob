@@ -14,6 +14,7 @@ export default function Login() {
           appearance={{ theme: ThemeSupa }}
           providers={[]}
           theme="light"
+          view="sign_in"
           localization={{
             variables: {
               sign_in: {
@@ -21,14 +22,6 @@ export default function Login() {
                 password_label: 'Sua senha',
                 button_label: 'Entrar',
                 social_provider_text: 'Entrar com {{provider}}',
-                link_text: 'Já tem uma conta? Entre',
-              },
-              sign_up: {
-                email_label: 'Seu email',
-                password_label: 'Sua senha',
-                button_label: 'Registrar',
-                social_provider_text: 'Registrar com {{provider}}',
-                link_text: 'Não tem uma conta? Registre-se',
               },
               forgotten_password: {
                 email_label: 'Seu email',

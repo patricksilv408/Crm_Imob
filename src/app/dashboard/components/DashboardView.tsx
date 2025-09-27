@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import Link from "next/link";
-import { Shield, Cog } from "lucide-react";
+import { Shield, Cog, Users } from "lucide-react";
 
 export default function DashboardView({ children }: { children: React.ReactNode }) {
   const { user, profile, signOut } = useAuth();
@@ -26,6 +26,14 @@ export default function DashboardView({ children }: { children: React.ReactNode 
                   <Link href="/dashboard/admin">
                     <Shield className="mr-2 h-4 w-4" />
                     Painel Admin
+                  </Link>
+                </Button>
+              )}
+              {profile?.role === 'AdminImobiliaria' && (
+                <Button asChild variant="secondary" size="sm">
+                  <Link href="/dashboard/manage-users">
+                    <Users className="mr-2 h-4 w-4" />
+                    Gerenciar Usuários
                   </Link>
                 </Button>
               )}

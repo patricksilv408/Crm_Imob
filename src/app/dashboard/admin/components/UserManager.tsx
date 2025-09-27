@@ -10,6 +10,10 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { EditUserDialog } from "./EditUserDialog";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
+import { deleteUser } from "../actions";
+import { toast } from "sonner";
 
 type User = {
   id: string;
@@ -25,6 +29,18 @@ type Agency = {
 };
 
 export function UserManager({ initialUsers, agencies }: { initialUsers: User[], agencies: Agency[] }) {
+
+  const handleDelete = async (formData: FormData) => {
+    if (confirm("Tem certeza que deseja excluir este usuário? Esta ação é irreversível.")) {
+      const result = await deleteUser(formData);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success(result.message);
+      }
+    }
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-4">Usuários</h2>
@@ -50,6 +66,12 @@ export function UserManager({ initialUsers, agencies }: { initialUsers: User[], 
                 </TableCell>
                 <TableCell className="text-right">
                   <EditUserDialog user={user} agencies={agencies} />
+                  <form action={handleDelete} className="inline-block ml-1">
+                    <input type="hidden" name="userId" value={user.id} />
+                    <Button variant="ghost" size="icon" type="submit">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </form>
                 </TableCell>
               </TableRow>
             ))}

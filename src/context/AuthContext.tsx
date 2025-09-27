@@ -22,37 +22,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
 
+  const handleAuthStateChange = async (session: Session | null) => {
+    setSession(session);
+    if (session?.user) {
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('*, real_estate_agencies(is_active)')
+        .eq('id', session.user.id)
+        .single();
+
+      // @ts-ignore
+      if (userProfile && userProfile.real_estate_agencies && !userProfile.real_estate_agencies.is_active) {
+        await supabase.auth.signOut();
+        setProfile(null);
+        setSession(null);
+        // Optionally, add a query param to show a message on the login page
+        // router.push('/login?error=agency_inactive');
+      } else {
+        setProfile(userProfile);
+      }
+    } else {
+      setProfile(null);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      if (session?.user) {
-        const { data: userProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        setProfile(userProfile);
-      }
-      setLoading(false);
+      await handleAuthStateChange(session);
     };
 
     getSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event: AuthChangeEvent, session: Session | null) => {
-        setSession(session);
-        if (session?.user) {
-          const { data: userProfile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          setProfile(userProfile);
-        } else {
-          setProfile(null);
-        }
-        setLoading(false);
+        await handleAuthStateChange(session);
       }
     );
 
