@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .insert({
             id: session.user.id,
             email: session.user.email,
-            role: session.user.email === 'patrick.santosilv@gmail.com' ? 'SuperAdmin' : null
+            role: session.user.email === 'patrick.santosilv@gmail.com' ? 'SuperAdmin' : 'Corretor'
           })
           .select('*, real_estate_agencies(is_active)')
           .single();
