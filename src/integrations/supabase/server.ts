@@ -9,10 +9,10 @@ export const createSupabaseServerClient = () => {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
-                get(name: string) {
+                get: (name: string) => {
                     return cookieStore.get(name)?.value;
                 },
-                set(name: string, value: string, options: CookieOptions) {
+                set: (name: string, value: string, options: CookieOptions) => {
                     try {
                         cookieStore.set({ name, value, ...options });
                     } catch (error) {
@@ -20,7 +20,7 @@ export const createSupabaseServerClient = () => {
                         // This can be ignored if you have middleware refreshing sessions.
                     }
                 },
-                remove(name: string, options: CookieOptions) {
+                remove: (name: string, options: CookieOptions) => {
                     try {
                         cookieStore.set({ name, value: '', ...options });
                     } catch (error) {

@@ -12,7 +12,6 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
-  serverActions: true,
 };
 
 export default nextConfig;

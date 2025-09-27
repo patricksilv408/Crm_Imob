@@ -70,7 +70,7 @@ export async function updateWebhookSettings(
     });
 
     if (!validatedUrl.success) {
-      return { error: "URL de envio inválida." };
+      return { error: "URL de envio inválida.", message: null };
     }
 
     const payloadConfig = {
@@ -91,9 +91,9 @@ export async function updateWebhookSettings(
     if (error) throw error;
 
     revalidatePath("/dashboard/settings");
-    return { message: "Configurações salvas com sucesso!" };
+    return { message: "Configurações salvas com sucesso!", error: null };
   } catch (error: any) {
-    return { error: error.message };
+    return { error: error.message, message: null };
   }
 }
 
