@@ -4,6 +4,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { LeadManager } from "./components/LeadManager";
 import { Toaster } from "@/components/ui/sonner";
+import Link from "next/link";
+import { Shield } from "lucide-react";
 
 export default function Dashboard() {
   const { user, profile, signOut } = useAuth();
@@ -20,17 +22,18 @@ export default function Dashboard() {
                 <p className="font-semibold">{user?.email}</p>
                 <p className="text-sm text-gray-500">{profile?.role || "Não definida"}</p>
               </div>
+              {profile?.role === 'SuperAdmin' && (
+                <Button asChild variant="secondary">
+                  <Link href="/dashboard/admin">
+                    <Shield className="mr-2 h-4 w-4" />
+                    Painel Admin
+                  </Link>
+                </Button>
+              )}
               <Button onClick={signOut} variant="outline">Sair</Button>
             </div>
           </div>
           
-          {profile?.role === 'SuperAdmin' && (
-            <div className="p-4 mb-6 bg-blue-100 border-l-4 border-blue-500 text-blue-700">
-              <p className="font-bold">Modo SuperAdmin</p>
-              <p>Você tem acesso total ao sistema.</p>
-            </div>
-          )}
-
           <LeadManager />
 
         </div>
