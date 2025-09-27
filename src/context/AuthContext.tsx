@@ -25,13 +25,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const handleAuthStateChange = async (session: Session | null) => {
     setSession(session);
     if (session?.user) {
-      const { data: userProfile } = await supabase
+      let { data: userProfile } = await supabase
         .from('profiles')
         .select('*, real_estate_agencies(is_active)')
         .eq('id', session.user.id)
         .single();
 
-      // Check for inactive agency only applies if the user is part of one.
+      // Autocorreção: Se o perfil não existir, cria um.
+      // Isso lida com casos onde o usuário foi criado antes do gatilho do DB estar ativo.
+      if (!userProfile && session.user.email) {
+        const { data: newUserProfile, error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: session.user.id,
+            email: session.user.email,
+            role: session.user.email === 'patrick.santosilv@gmail.com' ? 'SuperAdmin' : null
+          })
+          .select('*, real_estate_agencies(is_active)')
+          .single();
+        
+        if (insertError) {
+          console.error("Erro ao criar perfil dinamicamente:", insertError);
+        } else {
+          userProfile = newUserProfile;
+        }
+      }
+
       const agency = userProfile?.real_estate_agencies;
       if (agency && agency.is_active === false) {
         await supabase.auth.signOut();
