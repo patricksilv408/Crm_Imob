@@ -31,13 +31,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .eq('id', session.user.id)
         .single();
 
-      // @ts-ignore
-      if (userProfile && userProfile.real_estate_agencies && !userProfile.real_estate_agencies.is_active) {
+      // Check for inactive agency only applies if the user is part of one.
+      const agency = userProfile?.real_estate_agencies;
+      if (agency && agency.is_active === false) {
         await supabase.auth.signOut();
         setProfile(null);
         setSession(null);
-        // Optionally, add a query param to show a message on the login page
-        // router.push('/login?error=agency_inactive');
       } else {
         setProfile(userProfile);
       }
