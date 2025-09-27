@@ -58,10 +58,15 @@ const WebhookSchema = z.object({
   send_url: z.string().url("URL inválida").or(z.literal("")),
 });
 
+type ActionState = {
+  message: string | null;
+  error: string | null;
+};
+
 export async function updateWebhookSettings(
-  prevState: { message: string | null; error: string | null },
+  prevState: ActionState,
   formData: FormData
-) {
+): Promise<ActionState> {
   const supabase = createSupabaseServerClient();
   try {
     const agencyId = await getAgencyIdForCurrentUser();

@@ -35,6 +35,14 @@ export default async function AdminPage() {
     return <p>Erro ao carregar dados.</p>;
   }
 
+  // Normalize the nested relationship which might be an array
+  const normalizedUsers = users?.map(u => ({
+    ...u,
+    real_estate_agencies: Array.isArray(u.real_estate_agencies) 
+      ? u.real_estate_agencies[0] 
+      : u.real_estate_agencies,
+  })) || [];
+
   return (
     <div className="flex flex-col items-center min-h-screen p-4 sm:p-8 bg-gray-50">
       <div className="w-full max-w-6xl p-4 sm:p-8 bg-white rounded-lg shadow-md">
@@ -48,7 +56,7 @@ export default async function AdminPage() {
         </div>
         <div className="space-y-8">
           <AgencyManager initialAgencies={agencies || []} />
-          <UserManager initialUsers={users || []} agencies={agencies || []} />
+          <UserManager initialUsers={normalizedUsers} agencies={agencies || []} />
         </div>
       </div>
     </div>
