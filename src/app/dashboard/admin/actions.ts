@@ -1,6 +1,6 @@
 "use server";
 
-import { supabase } from "@/integrations/supabase/server";
+import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -15,6 +15,7 @@ const UserUpdateSchema = z.object({
 });
 
 async function checkSuperAdmin() {
+  const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Usuário não autenticado.");
 
@@ -30,6 +31,7 @@ async function checkSuperAdmin() {
 }
 
 export async function createAgency(formData: FormData) {
+  const supabase = createSupabaseServerClient();
   try {
     await checkSuperAdmin();
 
@@ -55,6 +57,7 @@ export async function createAgency(formData: FormData) {
 }
 
 export async function updateUserProfile(formData: FormData) {
+  const supabase = createSupabaseServerClient();
   try {
     await checkSuperAdmin();
 

@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/server";
+import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import {
   Table,
   TableBody,
@@ -10,7 +10,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { CreateLeadDialog } from "./CreateLeadDialog";
 
+type Lead = {
+  id: string;
+  customer_name: string;
+  customer_phone: string | null;
+  customer_email: string | null;
+  status: string;
+  created_at: string;
+};
+
 export async function LeadManager() {
+  const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) {
@@ -63,7 +73,7 @@ export async function LeadManager() {
           </TableHeader>
           <TableBody>
             {leads && leads.length > 0 ? (
-              leads.map((lead) => (
+              leads.map((lead: Lead) => (
                 <TableRow key={lead.id}>
                   <TableCell className="font-medium">{lead.customer_name}</TableCell>
                   <TableCell>

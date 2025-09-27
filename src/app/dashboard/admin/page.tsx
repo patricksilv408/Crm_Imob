@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/server";
+import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { redirect } from "next/navigation";
 import { AgencyManager } from "./components/AgencyManager";
 import { UserManager } from "./components/UserManager";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
 export default async function AdminPage() {
+  const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return redirect("/login");

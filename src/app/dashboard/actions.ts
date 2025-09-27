@@ -1,6 +1,6 @@
 "use server";
 
-import { supabase } from "@/integrations/supabase/server";
+import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -12,6 +12,7 @@ const LeadSchema = z.object({
 });
 
 export async function createLead(formData: FormData) {
+  const supabase = createSupabaseServerClient();
   const validatedFields = LeadSchema.safeParse({
     customer_name: formData.get("customer_name"),
     customer_phone: formData.get("customer_phone"),

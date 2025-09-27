@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/server";
+import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { WebhookSettings } from "./components/WebhookSettings";
 import { getWebhookConfig } from "./actions";
 
 export default async function SettingsPage() {
+  const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return redirect("/login");

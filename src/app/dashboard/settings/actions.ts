@@ -1,10 +1,11 @@
 "use server";
 
-import { supabase } from "@/integrations/supabase/server";
+import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 async function getAgencyIdForCurrentUser() {
+  const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Usuário não autenticado.");
 
@@ -26,6 +27,7 @@ async function getAgencyIdForCurrentUser() {
 }
 
 export async function getWebhookConfig() {
+  const supabase = createSupabaseServerClient();
   const agencyId = await getAgencyIdForCurrentUser();
 
   const { data: config } = await supabase
@@ -56,7 +58,11 @@ const WebhookSchema = z.object({
   send_url: z.string().url("URL inválida").or(z.literal("")),
 });
 
-export async function updateWebhookSettings(formData: FormData) {
+export async function updateWebhookSettings(
+  prevState: { message: string | null; error: string | null },
+  formData: FormData
+) {
+  const supabase = createSupabaseServerClient();
   try {
     const agencyId = await getAgencyIdForCurrentUser();
     const validatedUrl = WebhookSchema.safeParse({
@@ -92,6 +98,7 @@ export async function updateWebhookSettings(formData: FormData) {
 }
 
 export async function regenerateReceiveToken() {
+    const supabase = createSupabaseServerClient();
     try {
         const agencyId = await getAgencyIdForCurrentUser();
         const newToken = crypto.randomUUID();
@@ -111,6 +118,7 @@ export async function regenerateReceiveToken() {
 }
 
 export async function sendTestWebhook() {
+    const supabase = createSupabaseServerClient();
     try {
         const agencyId = await getAgencyIdForCurrentUser();
         const { data: config, error: configError } = await supabase
