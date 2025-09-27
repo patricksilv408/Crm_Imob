@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CreateLeadDialog } from "./CreateLeadDialog";
+import { User } from "@supabase/supabase-js";
 
 type Lead = {
   id: string;
@@ -19,24 +20,22 @@ type Lead = {
   created_at: string;
 };
 
-export async function LeadManager() {
+type Profile = {
+  role: string | null;
+  real_estate_agency_id: string | null;
+};
+
+export async function LeadManager({
+  profile,
+  user,
+}: {
+  profile: Profile | null;
+  user: User;
+}) {
   const supabase = createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
-    return <p>Usuário não encontrado.</p>;
-  }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('real_estate_agency_id, role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || !profile.real_estate_agency_id) {
-    if (profile?.role !== 'SuperAdmin') {
-      return <p>Você não está associado a uma imobiliária.</p>;
-    }
+  if (!profile || (!profile.real_estate_agency_id && profile.role !== 'SuperAdmin')) {
+    return <p>Você não está associado a uma imobiliária ou não tem permissão para ver os leads.</p>;
   }
 
   let query = supabase.from("leads").select("*");
@@ -48,7 +47,9 @@ export async function LeadManager() {
   }
   // SuperAdmin sees all leads, so no filter is applied
 
-  const { data: leads, error } = await query.order("created_at", { ascending: false });
+  const { data: leads, error } = await query.order("created_at", {
+    ascending: false,
+  });
 
   if (error) {
     console.error(error);
@@ -59,7 +60,7 @@ export async function LeadManager() {
     <div className="w-full">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Leads</h2>
-        {profile.role !== 'SuperAdmin' && <CreateLeadDialog />}
+        {profile.role !== "SuperAdmin" && <CreateLeadDialog />}
       </div>
       <div className="border rounded-lg">
         <Table>
@@ -75,7 +76,9 @@ export async function LeadManager() {
             {leads && leads.length > 0 ? (
               leads.map((lead: Lead) => (
                 <TableRow key={lead.id}>
-                  <TableCell className="font-medium">{lead.customer_name}</TableCell>
+                  <TableCell className="font-medium">
+                    {lead.customer_name}
+                  </TableCell>
                   <TableCell>
                     {lead.customer_phone || lead.customer_email}
                   </TableCell>

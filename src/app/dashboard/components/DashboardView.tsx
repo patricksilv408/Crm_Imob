@@ -5,9 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import Link from "next/link";
 import { Shield, Cog, Users } from "lucide-react";
+import { User } from "@supabase/supabase-js";
 
-export default function DashboardView({ children }: { children: React.ReactNode }) {
-  const { user, profile, signOut } = useAuth();
+type Profile = {
+  role: string | null;
+};
+
+export default function DashboardView({
+  children,
+  user: initialUser,
+  profile: initialProfile,
+}: {
+  children: React.ReactNode;
+  user: User | null;
+  profile: Profile | null;
+}) {
+  const { signOut, user: contextUser, profile: contextProfile } = useAuth();
+
+  const user = contextUser || initialUser;
+  const profile = contextProfile || initialProfile;
 
   return (
     <>
@@ -19,9 +35,11 @@ export default function DashboardView({ children }: { children: React.ReactNode 
             <div className="flex items-center gap-2">
               <div className="text-right">
                 <p className="font-semibold">{user?.email}</p>
-                <p className="text-sm text-gray-500">{profile?.role || "Não definida"}</p>
+                <p className="text-sm text-gray-500">
+                  {profile?.role || "Carregando..."}
+                </p>
               </div>
-              {profile?.role === 'SuperAdmin' && (
+              {profile?.role === "SuperAdmin" && (
                 <Button asChild variant="secondary" size="sm">
                   <Link href="/dashboard/admin">
                     <Shield className="mr-2 h-4 w-4" />
@@ -29,7 +47,7 @@ export default function DashboardView({ children }: { children: React.ReactNode 
                   </Link>
                 </Button>
               )}
-              {profile?.role === 'AdminImobiliaria' && (
+              {profile?.role === "AdminImobiliaria" && (
                 <Button asChild variant="secondary" size="sm">
                   <Link href="/dashboard/manage-users">
                     <Users className="mr-2 h-4 w-4" />
@@ -37,20 +55,22 @@ export default function DashboardView({ children }: { children: React.ReactNode 
                   </Link>
                 </Button>
               )}
-              {(profile?.role === 'SuperAdmin' || profile?.role === 'AdminImobiliaria') && (
-                 <Button asChild variant="secondary" size="sm">
+              {(profile?.role === "SuperAdmin" ||
+                profile?.role === "AdminImobiliaria") && (
+                <Button asChild variant="secondary" size="sm">
                   <Link href="/dashboard/settings">
                     <Cog className="mr-2 h-4 w-4" />
                     Configurações
                   </Link>
                 </Button>
               )}
-              <Button onClick={signOut} variant="outline" size="sm">Sair</Button>
+              <Button onClick={signOut} variant="outline" size="sm">
+                Sair
+              </Button>
             </div>
           </div>
-          
-          {children}
 
+          {children}
         </div>
       </div>
     </>
