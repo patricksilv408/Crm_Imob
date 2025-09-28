@@ -34,9 +34,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Autocorreção: Se o perfil não existir, cria um.
       // Isso lida com casos onde o usuário foi criado antes do gatilho do DB estar ativo.
       if (!userProfile && session.user.email) {
-        const { data: newUserProfile, error: insertError } = await supabase
+        const { data: newUserProfile, error: upsertError } = await supabase
           .from('profiles')
-          .insert({
+          .upsert({
             id: session.user.id,
             email: session.user.email,
             role: session.user.email === 'patrick.santosilv@gmail.com' ? 'SuperAdmin' : 'Corretor'
@@ -44,8 +44,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .select('*, real_estate_agencies(is_active)')
           .single();
         
-        if (insertError) {
-          console.error("Erro ao criar perfil dinamicamente:", insertError);
+        if (upsertError) {
+          console.error("Erro ao criar/atualizar perfil dinamicamente:", upsertError);
         } else {
           userProfile = newUserProfile;
         }
