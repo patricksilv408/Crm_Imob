@@ -85,12 +85,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (!loading) {
-      if (session && pathname === '/login') {
-        router.push('/dashboard');
-      } else if (!session && pathname !== '/login') {
-        router.push('/login');
-      }
+    if (loading) return;
+
+    const isAuthPage = pathname === '/login';
+
+    if (!session && !isAuthPage) {
+      router.push('/login');
+    }
+
+    if (session && isAuthPage) {
+      router.push('/dashboard');
     }
   }, [session, loading, pathname, router]);
 
@@ -108,7 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signOut,
   };
 
-  if (loading && pathname !== '/login') {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p>Carregando...</p>
