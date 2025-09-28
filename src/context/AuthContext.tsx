@@ -25,18 +25,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const handleAuthStateChange = async (session: Session | null) => {
     if (session?.user) {
-      const { data: userProfile, error } = await supabase
+      // Etapa 1: Buscar os dados do perfil do usuário.
+      const { data: userProfile, error: profileError } = await supabase
         .from('profiles')
-        .select('*, real_estate_agencies(is_active)')
+        .select('*')
         .eq('id', session.user.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = row not found
-        console.error("Erro ao buscar perfil:", error);
+      if (profileError && profileError.code !== 'PGRST116') { // Ignorar "linha não encontrada"
+        console.error("Erro ao buscar perfil:", profileError);
+        setSession(null);
+        setProfile(null);
+        setLoading(false);
+        return;
       }
 
-      const agency = userProfile?.real_estate_agencies;
-      if (agency && agency.is_active === false) {
+      // Etapa 2: Se o usuário tiver uma imobiliária, buscar o status da imobiliária.
+      if (userProfile && userProfile.real_estate_agency_id) {
+        const { data: agency, error: agencyError } = await supabase
+          .from('real_estate_agencies')
+          .select('is_active')
+          .eq('id', userProfile.real_estate_agency_id)
+          .single();
+
+        if (agencyError) {
+          console.error("Erro ao buscar dados da imobiliária:", agencyError);
+        } else {
+          // Anexar o status da imobiliária ao objeto do perfil para uso consistente.
+          userProfile.real_estate_agencies = agency;
+        }
+      }
+
+      // Etapa 3: Verificar se a imobiliária está inativa e desconectar o usuário, se necessário.
+      const agencyIsInactive = userProfile?.real_estate_agencies?.is_active === false;
+      if (agencyIsInactive) {
         await supabase.auth.signOut();
         setSession(null);
         setProfile(null);
