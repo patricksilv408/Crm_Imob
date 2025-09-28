@@ -27,8 +27,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (session?.user) {
       const user = session.user;
       
-      // Etapa 1: Construir o perfil a partir do token (JWT) para evitar a consulta ao banco que está falhando.
-      // Isso também é mais performático.
       const userProfile = {
         id: user.id,
         email: user.email,
@@ -36,7 +34,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         real_estate_agency_id: user.app_metadata?.agency_id || null,
       };
 
-      // Etapa 2: Se o usuário tiver uma imobiliária, buscar o status da imobiliária.
       if (userProfile.real_estate_agency_id) {
         const { data: agency, error: agencyError } = await supabase
           .from('real_estate_agencies')
@@ -48,12 +45,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error("Erro ao buscar dados da imobiliária:", agencyError);
         }
         
-        // Anexar o status da imobiliária ao objeto do perfil.
         // @ts-ignore
         userProfile.real_estate_agencies = agency;
       }
 
-      // Etapa 3: Verificar se a imobiliária está inativa e desconectar o usuário, se necessário.
       // @ts-ignore
       const agencyIsInactive = userProfile?.real_estate_agencies?.is_active === false;
       if (userProfile.role !== 'SuperAdmin' && agencyIsInactive) {
@@ -74,20 +69,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      await handleAuthStateChange(session);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        await handleAuthStateChange(session);
+      } catch (err) {
+        console.error("Auth Error:", err);
+        toast.error("Falha na conexão com o servidor. Verifique sua rede ou desative bloqueadores de anúncio.");
+        setSession(null);
+        setProfile(null);
+        setLoading(false);
+      }
     };
 
     getSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event: AuthChangeEvent, session: Session | null) => {
-        // Forçar a atualização do token para obter os claims mais recentes
-        if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED' || _event === 'USER_UPDATED') {
-            const { data: { session: newSession } } = await supabase.auth.getSession();
-            await handleAuthStateChange(newSession);
-        } else if (_event === 'SIGNED_OUT') {
-            await handleAuthStateChange(null);
+        try {
+          if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED' || _event === 'USER_UPDATED') {
+              const { data: { session: newSession }, error } = await supabase.auth.getSession();
+              if (error) throw error;
+              await handleAuthStateChange(newSession);
+          } else if (_event === 'SIGNED_OUT') {
+              await handleAuthStateChange(null);
+          }
+        } catch (err) {
+            console.error("Auth State Change Error:", err);
+            toast.error("Ocorreu um erro ao atualizar sua sessão.");
         }
       }
     );
