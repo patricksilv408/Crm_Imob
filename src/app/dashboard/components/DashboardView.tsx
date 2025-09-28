@@ -2,7 +2,6 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Toaster } from "@/components/ui/sonner";
 import Link from "next/link";
 import { Shield, Cog, Users } from "lucide-react";
 import { User } from "@supabase/supabase-js";
@@ -27,7 +26,6 @@ export default function DashboardView({
 
   return (
     <>
-      <Toaster richColors />
       <div className="flex flex-col items-center min-h-screen p-4 sm:p-8 bg-gray-50">
         <div className="w-full max-w-6xl p-4 sm:p-8 bg-white rounded-lg shadow-md">
           <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
