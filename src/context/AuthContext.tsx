@@ -25,23 +25,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const handleAuthStateChange = async (session: Session | null) => {
     if (session?.user) {
-      // Etapa 1: Buscar os dados do perfil do usuário.
-      const { data: userProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (profileError && profileError.code !== 'PGRST116') { // Ignorar "linha não encontrada"
-        console.error("Erro ao buscar perfil:", profileError);
-        setSession(null);
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
+      const user = session.user;
+      
+      // Etapa 1: Construir o perfil a partir do token (JWT) para evitar a consulta ao banco que está falhando.
+      // Isso também é mais performático.
+      const userProfile = {
+        id: user.id,
+        email: user.email,
+        role: user.app_metadata?.role || null,
+        real_estate_agency_id: user.app_metadata?.agency_id || null,
+      };
 
       // Etapa 2: Se o usuário tiver uma imobiliária, buscar o status da imobiliária.
-      if (userProfile && userProfile.real_estate_agency_id) {
+      if (userProfile.real_estate_agency_id) {
         const { data: agency, error: agencyError } = await supabase
           .from('real_estate_agencies')
           .select('is_active')
@@ -50,15 +46,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (agencyError) {
           console.error("Erro ao buscar dados da imobiliária:", agencyError);
-        } else {
-          // Anexar o status da imobiliária ao objeto do perfil para uso consistente.
-          userProfile.real_estate_agencies = agency;
         }
+        
+        // Anexar o status da imobiliária ao objeto do perfil.
+        // @ts-ignore
+        userProfile.real_estate_agencies = agency;
       }
 
       // Etapa 3: Verificar se a imobiliária está inativa e desconectar o usuário, se necessário.
+      // @ts-ignore
       const agencyIsInactive = userProfile?.real_estate_agencies?.is_active === false;
-      if (agencyIsInactive) {
+      if (userProfile.role !== 'SuperAdmin' && agencyIsInactive) {
         await supabase.auth.signOut();
         setSession(null);
         setProfile(null);
@@ -84,7 +82,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event: AuthChangeEvent, session: Session | null) => {
-        await handleAuthStateChange(session);
+        // Forçar a atualização do token para obter os claims mais recentes
+        if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED' || _event === 'USER_UPDATED') {
+            const { data: { session: newSession } } = await supabase.auth.getSession();
+            await handleAuthStateChange(newSession);
+        } else if (_event === 'SIGNED_OUT') {
+            await handleAuthStateChange(null);
+        }
       }
     );
 
