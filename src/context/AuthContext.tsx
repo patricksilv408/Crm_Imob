@@ -25,28 +25,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const handleAuthStateChange = async (session: Session | null) => {
     if (session?.user) {
-      let { data: userProfile } = await supabase
+      const { data: userProfile, error } = await supabase
         .from('profiles')
         .select('*, real_estate_agencies(is_active)')
         .eq('id', session.user.id)
         .single();
 
-      if (!userProfile && session.user.email) {
-        const { data: newUserProfile, error: upsertError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: session.user.id,
-            email: session.user.email,
-            role: session.user.email === 'patrick.santosilv@gmail.com' ? 'SuperAdmin' : 'Corretor'
-          })
-          .select('*, real_estate_agencies(is_active)')
-          .single();
-        
-        if (upsertError) {
-          console.error("Erro ao criar/atualizar perfil dinamicamente:", upsertError);
-        } else {
-          userProfile = newUserProfile;
-        }
+      if (error && error.code !== 'PGRST116') { // PGRST116 = row not found
+        console.error("Erro ao buscar perfil:", error);
       }
 
       const agency = userProfile?.real_estate_agencies;
