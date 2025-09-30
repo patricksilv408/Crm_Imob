@@ -34,14 +34,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const handleAuthStateChange = async (session: Session | null) => {
     setLoading(true);
     if (session?.user) {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*, real_estate_agencies(is_active)')
-        .eq('id', session.user.id)
-        .single();
+      let profileData: Profile | null = null;
+      let profileError: any = null;
+
+      // Tenta buscar o perfil algumas vezes para lidar com a condição de corrida
+      // em que o perfil pode ainda não ter sido criado pelo gatilho do banco de dados.
+      for (let i = 0; i < 4; i++) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*, real_estate_agencies(is_active)')
+          .eq('id', session.user.id)
+          .single();
+
+        if (data) {
+          profileData = data as Profile;
+          profileError = null;
+          break; // Perfil encontrado, sai do loop
+        }
+        
+        // Se houver um erro real (que não seja "não encontrado"), armazena e sai.
+        if (error && error.code !== 'PGRST116') { // PGRST116 é o código para "Não Encontrado"
+          profileError = error;
+          break;
+        }
+
+        // Se não encontrou, espera um pouco e tenta novamente.
+        await new Promise(res => setTimeout(res, 250 * (i + 1)));
+      }
 
       if (profileError || !profileData) {
-        console.error("Erro ao buscar perfil do usuário:", profileError);
+        console.error("Erro ao buscar perfil do usuário após várias tentativas:", profileError);
         toast.error("Não foi possível carregar seu perfil. Por favor, tente fazer login novamente.");
         await supabase.auth.signOut();
         setSession(null);
@@ -56,7 +78,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           toast.error("Sua imobiliária está inativa. Contate o suporte.");
         } else {
           setSession(session);
-          setProfile(profileData as Profile);
+          setProfile(profileData);
         }
       }
     } else {
