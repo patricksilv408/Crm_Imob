@@ -68,14 +68,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
+    // This global handler catches unhandled promise rejections.
+    // It's a fallback to prevent crashes from network errors inside third-party libraries.
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      if (event.reason?.message === 'Failed to fetch') {
+        event.preventDefault();
+        console.error('Caught unhandled promise rejection (Failed to fetch):', event.reason);
+        toast.error("Falha de rede. Verifique sua conexão e desative bloqueadores de anúncio.");
+      }
+    };
+    window.addEventListener('unhandledrejection', handleRejection);
+
     const getSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
         await handleAuthStateChange(session);
-      } catch (err) {
-        console.error("Auth Error:", err);
-        toast.error("Falha na conexão com o servidor. Verifique sua rede ou desative bloqueadores de anúncio.");
+      } catch (err: any) {
+        console.error("Auth Error on getSession:", err);
+        if (err.message?.includes('Failed to fetch')) {
+          toast.error("Falha na conexão com o servidor. Verifique sua rede ou desative bloqueadores de anúncio.");
+        }
         setSession(null);
         setProfile(null);
         setLoading(false);
@@ -103,6 +116,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('unhandledrejection', handleRejection);
     };
   }, []);
 
