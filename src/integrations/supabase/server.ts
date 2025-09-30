@@ -15,7 +15,11 @@ export const createSupabaseServerClient = () => {
                     try {
                         const cookieStore = await cookies();
                         cookieStore.set({ name, value, ...options });
-                    } catch (error) {
+                    } catch (error: any) {
+                        // Re-throw NEXT_REDIRECT errors to stop rendering and trigger the redirect
+                        if (error.digest?.includes('NEXT_REDIRECT')) {
+                            throw error;
+                        }
                         // The `set` method was called from a Server Component.
                         // This can be ignored if you have middleware refreshing sessions.
                     }
@@ -24,7 +28,11 @@ export const createSupabaseServerClient = () => {
                     try {
                         const cookieStore = await cookies();
                         cookieStore.set({ name, value: '', ...options });
-                    } catch (error) {
+                    } catch (error: any) {
+                        // Re-throw NEXT_REDIRECT errors to stop rendering and trigger the redirect
+                        if (error.digest?.includes('NEXT_REDIRECT')) {
+                            throw error;
+                        }
                         // The `delete` method was called from a Server Component.
                         // This can be ignored if you have middleware refreshing sessions.
                     }

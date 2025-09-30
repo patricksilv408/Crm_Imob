@@ -25,7 +25,10 @@ export async function POST(request: Request) {
             try {
                 const cookieStore = await cookies();
                 cookieStore.set({ name, value, ...options });
-            } catch (error) {
+            } catch (error: any) {
+                if (error.digest?.includes('NEXT_REDIRECT')) {
+                    throw error;
+                }
                 // Ignore error
             }
         },
@@ -33,7 +36,10 @@ export async function POST(request: Request) {
             try {
                 const cookieStore = await cookies();
                 cookieStore.set({ name, value: '', ...options });
-            } catch (error) {
+            } catch (error: any) {
+                if (error.digest?.includes('NEXT_REDIRECT')) {
+                    throw error;
+                }
                 // Ignore error
             }
         },
