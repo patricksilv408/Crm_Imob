@@ -1,15 +1,23 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
+import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from "sonner";
 
+type Profile = {
+  id: string;
+  email: string | null;
+  role: 'SuperAdmin' | 'AdminImobiliaria' | 'Corretor' | null;
+  real_estate_agency_id: string | null;
+  real_estate_agencies: { is_active: boolean } | null;
+};
+
 type AuthContextType = {
   session: Session | null;
   user: User | null;
-  profile: any | null;
+  profile: Profile | null;
   loading: boolean;
   signOut: () => Promise<void>;
 };
@@ -18,47 +26,38 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
   const handleAuthStateChange = async (session: Session | null) => {
+    setLoading(true);
     if (session?.user) {
-      const user = session.user;
-      
-      const userProfile = {
-        id: user.id,
-        email: user.email,
-        role: user.app_metadata?.role || null,
-        real_estate_agency_id: user.app_metadata?.agency_id || null,
-      };
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*, real_estate_agencies(is_active)')
+        .eq('id', session.user.id)
+        .single();
 
-      if (userProfile.real_estate_agency_id) {
-        const { data: agency, error: agencyError } = await supabase
-          .from('real_estate_agencies')
-          .select('is_active')
-          .eq('id', userProfile.real_estate_agency_id)
-          .single();
-
-        if (agencyError) {
-          console.error("Erro ao buscar dados da imobiliária:", agencyError);
-        }
-        
-        // @ts-ignore
-        userProfile.real_estate_agencies = agency;
-      }
-
-      // @ts-ignore
-      const agencyIsInactive = userProfile?.real_estate_agencies?.is_active === false;
-      if (userProfile.role !== 'SuperAdmin' && agencyIsInactive) {
+      if (profileError || !profileData) {
+        console.error("Erro ao buscar perfil do usuário:", profileError);
+        toast.error("Não foi possível carregar seu perfil. Por favor, tente fazer login novamente.");
         await supabase.auth.signOut();
         setSession(null);
         setProfile(null);
-        toast.error("Sua imobiliária está inativa. Contate o suporte.");
       } else {
-        setSession(session);
-        setProfile(userProfile);
+        const agencyIsInactive = profileData.real_estate_agencies?.is_active === false;
+
+        if (profileData.role !== 'SuperAdmin' && agencyIsInactive) {
+          await supabase.auth.signOut();
+          setSession(null);
+          setProfile(null);
+          toast.error("Sua imobiliária está inativa. Contate o suporte.");
+        } else {
+          setSession(session);
+          setProfile(profileData as Profile);
+        }
       }
     } else {
       setSession(null);
@@ -68,8 +67,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    // This global handler catches unhandled promise rejections.
-    // It's a fallback to prevent crashes from network errors inside third-party libraries.
     const handleRejection = (event: PromiseRejectionEvent) => {
       if (event.reason?.message === 'Failed to fetch') {
         event.preventDefault();
@@ -79,38 +76,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
     window.addEventListener('unhandledrejection', handleRejection);
 
-    const getSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        await handleAuthStateChange(session);
-      } catch (err: any) {
-        console.error("Auth Error on getSession:", err);
-        if (err.message?.includes('Failed to fetch')) {
-          toast.error("Falha na conexão com o servidor. Verifique sua rede ou desative bloqueadores de anúncio.");
-        }
-        setSession(null);
-        setProfile(null);
-        setLoading(false);
-      }
+    const getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      await handleAuthStateChange(session);
     };
 
-    getSession();
+    getInitialSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event: AuthChangeEvent, session: Session | null) => {
-        try {
-          if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED' || _event === 'USER_UPDATED') {
-              const { data: { session: newSession }, error } = await supabase.auth.getSession();
-              if (error) throw error;
-              await handleAuthStateChange(newSession);
-          } else if (_event === 'SIGNED_OUT') {
-              await handleAuthStateChange(null);
-          }
-        } catch (err) {
-            console.error("Auth State Change Error:", err);
-            toast.error("Ocorreu um erro ao atualizar sua sessão.");
-        }
+      async (_event, session) => {
+        await handleAuthStateChange(session);
       }
     );
 
