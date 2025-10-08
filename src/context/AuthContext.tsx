@@ -121,13 +121,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (loading) return;
 
     const isAuthPage = pathname === '/login';
+    const isRootPage = pathname === '/';
 
-    if (!session && !isAuthPage) {
-      router.push('/login');
+    // If user is logged in and on the login or root page, redirect to dashboard
+    if (session && (isAuthPage || isRootPage)) {
+      router.push('/dashboard');
     }
 
-    if (session && isAuthPage) {
-      router.push('/dashboard');
+    // If user is not logged in and not on the login page, redirect to login
+    if (!session && !isAuthPage) {
+      router.push('/login');
     }
   }, [session, loading, pathname, router]);
 
