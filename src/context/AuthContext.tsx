@@ -32,53 +32,67 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
 
   const handleAuthStateChange = async (session: Session | null) => {
-    setLoading(true);
     if (session?.user) {
-      let profileData: Profile | null = null;
-      let profileError: any = null;
+      let finalProfile: Profile | null = null;
+      let criticalError: { message: string } | null = null;
 
-      // Tenta buscar o perfil algumas vezes para lidar com a condição de corrida
-      // em que o perfil pode ainda não ter sido criado pelo gatilho do banco de dados.
+      // Retry logic to handle potential race condition where profile is not yet created
       for (let i = 0; i < 4; i++) {
-        const { data, error } = await supabase
+        // Step 1: Fetch profile directly. This should be reliable.
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('*, real_estate_agencies(is_active)')
+          .select('*')
           .eq('id', session.user.id)
           .single();
 
-        if (data) {
-          profileData = data as Profile;
-          profileError = null;
-          break; // Perfil encontrado, sai do loop
-        }
-        
-        // Se houver um erro real (que não seja "não encontrado"), armazena e sai.
-        if (error && error.code !== 'PGRST116') { // PGRST116 é o código para "Não Encontrado"
-          profileError = error;
+        if (profileError && profileError.code !== 'PGRST116') { // PGRST116 = Not Found
+          criticalError = { message: `Profile fetch error: ${profileError.message}` };
           break;
         }
 
-        // Se não encontrou, espera um pouco e tenta novamente.
+        if (profileData) {
+          // Step 2: If profile has an agency, fetch agency status.
+          if (profileData.real_estate_agency_id) {
+            const { data: agencyData, error: agencyError } = await supabase
+              .from('real_estate_agencies')
+              .select('is_active')
+              .eq('id', profileData.real_estate_agency_id)
+              .single();
+            
+            if (agencyError) {
+              criticalError = { message: `Agency fetch error: ${agencyError.message}` };
+              break;
+            }
+            
+            (profileData as Profile).real_estate_agencies = agencyData ? { is_active: agencyData.is_active } : null;
+          } else {
+            (profileData as Profile).real_estate_agencies = null;
+          }
+          
+          finalProfile = profileData as Profile;
+          break; // Success
+        }
+
         await new Promise(res => setTimeout(res, 250 * (i + 1)));
       }
 
-      if (profileError || !profileData) {
-        console.error("Erro ao buscar perfil do usuário após várias tentativas:", profileError);
+      if (criticalError || !finalProfile) {
+        console.error("Error loading user data:", criticalError);
         toast.error("Não foi possível carregar seu perfil. Por favor, tente fazer login novamente.");
         await supabase.auth.signOut();
         setSession(null);
         setProfile(null);
       } else {
-        const agencyIsInactive = profileData.real_estate_agencies?.is_active === false;
+        const agencyIsInactive = finalProfile.real_estate_agencies?.is_active === false;
 
-        if (profileData.role !== 'SuperAdmin' && agencyIsInactive) {
+        if (finalProfile.role !== 'SuperAdmin' && agencyIsInactive) {
           await supabase.auth.signOut();
           setSession(null);
           setProfile(null);
           toast.error("Sua imobiliária está inativa. Contate o suporte.");
         } else {
           setSession(session);
-          setProfile(profileData);
+          setProfile(finalProfile);
         }
       }
     } else {
@@ -99,6 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     window.addEventListener('unhandledrejection', handleRejection);
 
     const getInitialSession = async () => {
+      setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       await handleAuthStateChange(session);
     };
@@ -121,14 +136,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (loading) return;
 
     const isAuthPage = pathname === '/login';
-    const isRootPage = pathname === '/';
 
-    // If user is logged in and on the login or root page, redirect to dashboard
-    if (session && (isAuthPage || isRootPage)) {
+    if (session && isAuthPage) {
       router.push('/dashboard');
     }
 
-    // If user is not logged in and not on the login page, redirect to login
     if (!session && !isAuthPage) {
       router.push('/login');
     }
@@ -137,6 +149,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setSession(null); // Ensure session is cleared immediately
     router.push('/login');
   };
 
@@ -148,7 +161,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signOut,
   };
 
-  if (loading) {
+  // While the context is loading, or if we are redirecting, show a loading screen.
+  // This prevents flashing content.
+  if (loading || (!session && pathname !== '/login') || (session && pathname === '/login')) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p>Carregando...</p>
