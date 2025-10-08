@@ -8,9 +8,17 @@ export async function middleware(request: NextRequest) {
     },
   })
 
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    // This error will be caught by the Next.js server and displayed in the logs.
+    console.error("Missing Supabase URL or Anon Key from environment variables.");
+    // You can optionally return a response to the user
+    // return new Response("Server configuration error", { status: 500 });
+    throw new Error("Missing Supabase URL or Anon Key from environment variables.");
+  }
+
   const supabase = createServerClient(
-    'https://spwhaaycmdzrnmkfplfo.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwd2hhYXljbWR6cm5ta2ZwbGZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMDczMDcsImV4cCI6MjA3NDU4MzMwN30.emIrE2NJz39iM9eEO7ZYfj7c6nnDfbvj1n7GGM4AwfQ',
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         get(name: string) {

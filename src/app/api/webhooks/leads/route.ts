@@ -12,9 +12,14 @@ const LeadWebhookSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.error("Webhook Error: Missing Supabase environment variables.");
+    return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
+  }
+
   const supabase = createServerClient(
-    'https://spwhaaycmdzrnmkfplfo.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwd2hhYXljbWR6cm5ta2ZwbGZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMDczMDcsImV4cCI6MjA3NDU4MzMwN30.emIrE2NJz39iM9eEO7ZYfj7c6nnDfbvj1n7GGM4AwfQ',
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         async get(name: string) {
